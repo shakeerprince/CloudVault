@@ -1,3 +1,4 @@
+import { generateToken } from "@/lib/jwt";
 import { addUser, getUserByUsername, getAllUsers, getUserById, updateUserDal } from "../dal/users_dal";
 import { NextResponse } from "next/server";
 const bcrypt = require('bcryptjs');
@@ -45,3 +46,21 @@ export const updateUserService = async (userId, userData) => {
         return { message: error.message, statusCode: "500" };
     }
 }
+
+export const validateLogin = async (username, password) => {
+    try {
+        const user = await getUserByUsername(username);
+        if (!user) {
+            return { message: "Invalid username", statusCode: "400" };
+        }
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return { message: "Invalid password", statusCode: "401" };
+        }
+        const generatedToken = await generateToken({ id: user.id, username: user.username, role: user.role });
+
+        return { message: "Login successful", statusCode: "200", data: generatedToken };
+    } catch (error) {
+        return { message: error.message, statusCode: "500" };
+    }
+};
