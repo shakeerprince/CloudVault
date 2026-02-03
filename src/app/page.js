@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Toast } from 'primereact/toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const toast = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -14,6 +18,29 @@ export default function LoginPage() {
     // Simulate login process
     setTimeout(() => {
       console.log('Login attempt with:', { email, password });
+      fetch('/api/v1/validatelogin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log('Login response:', data);
+          if (data.statusCode === "200") {
+            sessionStorage.setItem('authToken', data.data);
+            router.push('/pages/dashboard');
+          } else {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: data.message });
+          }
+        })
+        .catch((error) => {
+          console.error('Error during login:', error);
+          // Handle login error here (e.g., show error message)
+        })
+
+
       setIsLoading(false);
     }, 1000);
   };
@@ -22,6 +49,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4">
       <div className="w-full max-w-md">
         {/* Login Card */}
+        <Toast ref={toast} />
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 space-y-8">
           {/* Logo/Brand */}
           <div className="text-center">
@@ -110,6 +138,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
+              onClick={handleSubmit}
               className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg transition duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isLoading ? (
