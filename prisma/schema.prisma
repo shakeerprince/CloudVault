@@ -10,7 +10,7 @@ generator client {
 
 datasource db {
   provider = "mongodb"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 enum roles {
@@ -20,14 +20,52 @@ enum roles {
 }
 
 model users {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  username  String   @unique
+  username  String     @unique
   password  String
   role      roles
-  is_active Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime? @default(now())
+  is_active Boolean    @default(true)
+  provider  providers?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime?  @default(now())
+}
 
-  @@map("users")
+model states {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  code      String      @unique
+  cities    cities[]
+  providers providers[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime?   @default(now())
+}
+
+model cities {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  state_id  String      @db.ObjectId
+  state     states      @relation(fields: [state_id], references: [id])
+  providers providers[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime?   @default(now())
+}
+
+model providers {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  user_id          String    @unique @db.ObjectId
+  user             users     @relation(fields: [user_id], references: [id])
+  name             String
+  email            String    @unique
+  phone            String
+  address          String
+  state_id         String    @db.ObjectId
+  state            states    @relation(fields: [state_id], references: [id])
+  city_id          String    @db.ObjectId
+  city             cities    @relation(fields: [city_id], references: [id])
+  service_distance Float
+  latitude         Float
+  longitude        Float
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime? @default(now())
 }
