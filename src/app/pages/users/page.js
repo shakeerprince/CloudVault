@@ -25,7 +25,15 @@ const UsersPage = () => {
 
     const fetchUsers = async () => {
         try {
-            const response = await fetch('/api/v1/users?skip=0&take=10');
+            const response = await fetch('/api/v1/users?skip=0&take=10',
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
+                    }
+                }
+            );
             const data = await response.json();
             console.log('Fetched users data:', data);
             setUsers(data.data.map(user => ({
