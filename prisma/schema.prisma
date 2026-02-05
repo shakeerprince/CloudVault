@@ -66,6 +66,7 @@ model providers {
   service_distance Float
   latitude         Float
   longitude        Float
+  otp              String
   createdAt        DateTime  @default(now())
   updatedAt        DateTime? @default(now())
 }

@@ -1,60 +1,44 @@
-import prisma from '../../lib/prisma';
+import prisma from '@/lib/prisma';
 
-export const addProviderWithUser = async (providerData) => {
-    const { hashedPassword, password, ...providerInfo } = providerData;
-
-    // Use transaction to create both user and provider
-    const result = await prisma.$transaction(async (tx) => {
-        // Create user record
+export const addProviderWithUser = async (providerData, userData) => {
+    return await prisma.$transaction(async (tx) => {
         const user = await tx.users.create({
             data: {
-                name: providerInfo.name,
-                username: providerInfo.email,
-                password: hashedPassword,
+                name: userData.name,
+                username: userData.username,
+                password: userData.password,
                 role: 'MECHANIC',
-                is_active: true
-            }
+                is_active: false, // Will be activated after OTP verification
+            },
         });
 
-        // Create provider record
         const provider = await tx.providers.create({
             data: {
                 user_id: user.id,
-                name: providerInfo.name,
-                email: providerInfo.email,
-                phone: providerInfo.phone,
-                address: providerInfo.address,
-                state_id: providerInfo.state_id,
-                city_id: providerInfo.city_id,
-                service_distance: providerInfo.service_distance,
-                latitude: providerInfo.latitude,
-                longitude: providerInfo.longitude
+                name: providerData.name,
+                email: providerData.email,
+                phone: providerData.phone,
+                address: providerData.address,
+                state_id: providerData.state_id,
+                city_id: providerData.city_id,
+                service_distance: providerData.service_distance,
+                latitude: providerData.latitude,
+                longitude: providerData.longitude,
+                otp: providerData.otp,
             },
             include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        username: true,
-                        role: true,
-                        is_active: true
-                    }
-                },
+                user: true,
                 state: true,
-                city: true
-            }
+                city: true,
+            },
         });
 
         return provider;
     });
-
-    return result;
 };
 
-export const getAllProviders = async (skip, take) => {
-    const providers = await prisma.providers.findMany({
-        skip,
-        take,
+export const getAllProviders = async () => {
+    return await prisma.providers.findMany({
         include: {
             user: {
                 select: {
@@ -62,38 +46,17 @@ export const getAllProviders = async (skip, take) => {
                     name: true,
                     username: true,
                     role: true,
-                    is_active: true
-                }
+                    is_active: true,
+                },
             },
             state: true,
-            city: true
-        }
+            city: true,
+        },
     });
-    return providers;
-};
-
-export const getProviderByEmail = async (email) => {
-    const provider = await prisma.providers.findUnique({
-        where: { email },
-        include: {
-            user: {
-                select: {
-                    id: true,
-                    name: true,
-                    username: true,
-                    role: true,
-                    is_active: true
-                }
-            },
-            state: true,
-            city: true
-        }
-    });
-    return provider;
 };
 
 export const getProviderById = async (id) => {
-    const provider = await prisma.providers.findUnique({
+    return await prisma.providers.findUnique({
         where: { id },
         include: {
             user: {
@@ -102,27 +65,49 @@ export const getProviderById = async (id) => {
                     name: true,
                     username: true,
                     role: true,
-                    is_active: true
-                }
+                    is_active: true,
+                },
             },
             state: true,
-            city: true
-        }
+            city: true,
+        },
     });
-    return provider;
 };
 
-export const updateProviderDal = async (providerId, providerData) => {
-    const updatedProvider = await prisma.providers.update({
-        where: { id: providerId },
-        data: providerData
+export const getProviderByEmail = async (email) => {
+    return await prisma.providers.findUnique({
+        where: { email },
+        include: {
+            user: true,
+        },
     });
-    return updatedProvider;
 };
 
-export const deleteProviderDal = async (providerId) => {
-    const deletedProvider = await prisma.providers.delete({
-        where: { id: providerId }
+export const verifyProviderOTP = async (email, otp) => {
+    const provider = await prisma.providers.findUnique({
+        where: { email },
+        include: { user: true },
     });
-    return deletedProvider;
+
+    if (!provider) {
+        return { success: false, message: 'Provider not found' };
+    }
+
+    if (provider.otp !== otp) {
+        return { success: false, message: 'Invalid OTP' };
+    }
+
+    // Update user to active
+    await prisma.users.update({
+        where: { id: provider.user_id },
+        data: { is_active: true },
+    });
+
+    // Clear OTP after verification
+    await prisma.providers.update({
+        where: { id: provider.id },
+        data: { otp: '' },
+    });
+
+    return { success: true, message: 'Email verified successfully' };
 };

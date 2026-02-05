@@ -4,7 +4,7 @@ import { verifyToken } from './lib/jwt';
 // This function can be marked `async` if using `await` inside
 export async function middleware(request) {
 
-    if (request.nextUrl.pathname.startsWith('/api/v1/validatelogin')) {
+    if (request.nextUrl.pathname.startsWith('/api/v1/validatelogin') || request.nextUrl.pathname.startsWith('/api/v1/providers/sign-up') || request.nextUrl.pathname.startsWith('/api/v1/providers/verify-otp') || request.nextUrl.pathname.startsWith('/api/v1/states') || request.nextUrl.pathname.startsWith('/api/v1/cities')) {
         return NextResponse.next();
     }
 
