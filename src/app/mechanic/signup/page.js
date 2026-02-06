@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from 'primereact/card';
 import { InputText } from 'primereact/inputtext';
@@ -11,6 +11,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Message } from 'primereact/message';
 import { Divider } from 'primereact/divider';
 import { Dialog } from 'primereact/dialog';
+import { Toast } from 'primereact/toast';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import Link from 'next/link';
 
@@ -48,6 +49,8 @@ export default function MechanicSignupPage() {
     const [showMapDialog, setShowMapDialog] = useState(false);
     const [mapCenter, setMapCenter] = useState(defaultCenter);
     const [markerPosition, setMarkerPosition] = useState(defaultCenter);
+
+    const toast = useRef(null);
 
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -158,34 +161,39 @@ export default function MechanicSignupPage() {
 
         // Validation
         if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Passwords do not match' });
             return;
         }
 
         if (formData.password.length < 8) {
-            setError('Password must be at least 8 characters long');
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Password must be at least 8 characters long' });
             return;
         }
 
         if (!formData.address || formData.address.trim() === '') {
-            setError('Address is required');
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Address is required' });
             return;
         }
 
         if (!formData.state_id) {
-            setError('Please select a state');
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Please select a state' });
             return;
         }
 
         if (!formData.city_id) {
-            setError('Please select a city');
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Please select a city' });
+            return;
+        }
+
+        if (!formData.latitude || !formData.longitude) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Please select your location on the map' });
             return;
         }
 
         setLoading(true);
 
         try {
-            const response = await fetch('/api/v1/providers', {
+            const response = await fetch('/api/v1/providers/sign-up', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -207,19 +215,20 @@ export default function MechanicSignupPage() {
             const result = await response.json();
 
             if (response.ok) {
-                setSuccess('Registration successful! Redirecting to login...');
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Registration successful! Redirecting to login...' });
                 setTimeout(() => {
-                    router.push('/mechanic/login');
+                    router.push('/mechanic/verify-otp?email=' + encodeURIComponent(formData.email) + '&name=' + encodeURIComponent(formData.name));
                 }, 2000);
             } else {
-                setError(result.message || 'Registration failed. Please try again.');
+                toast.current.show({ severity: 'error', summary: 'Error', detail: result.message || 'Registration failed. Please try again.' });
             }
         } catch (err) {
-            setError(err.message || 'An error occurred. Please try again.');
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'An error occurred. Please try again.' });
         } finally {
             setLoading(false);
         }
-    };
+    }
+
 
     const passwordHeader = <div className="font-bold mb-3">Pick a password</div>;
     const passwordFooter = (
@@ -239,6 +248,7 @@ export default function MechanicSignupPage() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 px-4 py-8">
             <div className="w-full max-w-2xl">
                 {/* Header */}
+                <Toast ref={toast} />
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
                         <i className="pi pi-user-plus text-4xl text-white"></i>
@@ -254,8 +264,8 @@ export default function MechanicSignupPage() {
                 {/* Signup Card */}
                 <Card className="shadow-2xl">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {error && <Message severity="error" text={error} className="w-full" />}
-                        {success && <Message severity="success" text={success} className="w-full" />}
+                        {/* {error && <Message severity="error" text={error} className="w-full" />}
+                        {success && <Message severity="success" text={success} className="w-full" />} */}
 
                         {/* Personal Information */}
                         <div className="space-y-4">

@@ -78,7 +78,6 @@ const PageLayout = ({ children }) => {
     return (
         <div className="page-layout">
             <Menubar model={items} />
-
             {children}
         </div>
     );

@@ -1,6 +1,14 @@
+'use client';
 import { Menubar } from 'primereact/menubar';
+import { usePathname } from 'next/navigation';
 
 const MechanicLayout = ({ children }) => {
+    const pathname = usePathname();
+
+    // Hide menu for auth pages
+    const hideMenuPaths = ['/mechanic/login', '/mechanic/signup', '/mechanic/verify-otp'];
+    const shouldHideMenu = hideMenuPaths.includes(pathname);
+
     const items = [
         {
             label: 'Home',
@@ -46,8 +54,8 @@ const MechanicLayout = ({ children }) => {
     ];
     return (
         <div className="page-layout">
-            <Menubar model={items} />
 
+            {!shouldHideMenu && <Menubar model={items} />}
             {children}
         </div>
     );
