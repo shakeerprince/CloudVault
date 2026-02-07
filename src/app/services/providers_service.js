@@ -2,6 +2,7 @@ import * as providersDal from '@/app/dal/providers_dal';
 import bcrypt from 'bcryptjs';
 import { generateOTP } from '@/lib/otp';
 import { sendOTPEmail } from '@/lib/email';
+import { updateUserPasswordDal } from '../dal/users_dal';
 
 export const addProviderService = async (providerData) => {
     const existingProvider = await providersDal.getProviderByEmail(providerData.email);
@@ -70,4 +71,33 @@ export const getProviderService = async (id) => {
 
 export const verifyOTPService = async (email, otp) => {
     return await providersDal.verifyProviderOTP(email, otp);
+};
+
+export const updateProviderOTPService = async (email, otp) => {
+    return await providersDal.updateProviderOTP(email, otp);
+};
+
+export const resetPasswordService = async (email, otp, newPassword) => {
+    const provider = await providersDal.getProviderByEmail(email);
+
+    if (!provider) {
+        return { success: false, message: 'Provider not found' };
+    }
+
+    // Verify OTP
+    if (provider.otp !== otp) {
+        return { success: false, message: 'Invalid or expired OTP' };
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user password and clear OTP
+    await updateUserPasswordDal(provider.user_id, hashedPassword);
+    await providersDal.updateProviderOTP(provider.email, '');
+
+    return {
+        success: true,
+        message: 'Password reset successfully',
+    };
 };

@@ -6,7 +6,7 @@ const MechanicLayout = ({ children }) => {
     const pathname = usePathname();
 
     // Hide menu for auth pages
-    const hideMenuPaths = ['/mechanic/login', '/mechanic/signup', '/mechanic/verify-otp'];
+    const hideMenuPaths = ['/mechanic/login', '/mechanic/signup', '/mechanic/verify-otp', '/mechanic/forgot-password'];
     const shouldHideMenu = hideMenuPaths.includes(pathname);
 
     const items = [

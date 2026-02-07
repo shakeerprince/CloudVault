@@ -1,6 +1,5 @@
 import { generateToken } from "@/lib/jwt";
 import { addUser, getUserByUsername, getAllUsers, getUserById, updateUserDal } from "../dal/users_dal";
-import { NextResponse } from "next/server";
 const bcrypt = require('bcryptjs');
 
 export const addUserService = async (userData) => {
@@ -64,3 +63,15 @@ export const validateLogin = async (username, password) => {
         return { message: error.message, statusCode: "500" };
     }
 };
+
+export const getUserByUsernameService = async (username) => {
+    try {
+        const user = await getUserByUsername(username);
+        if (!user) {
+            return { message: "User not found", statusCode: "404" };
+        }
+        return { message: "User fetched successfully", statusCode: "200", data: user };
+    } catch (error) {
+        return { message: error.message, statusCode: "500" };
+    }
+}

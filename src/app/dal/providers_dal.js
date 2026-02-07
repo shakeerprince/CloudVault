@@ -83,6 +83,17 @@ export const getProviderByEmail = async (email) => {
     });
 };
 
+export const updateProviderOTP = async (email, otp) => {
+    const updatedProvider = await prisma.providers.update({
+        where: { email },
+        data: { otp, updated_at: new Date() },
+        include: {
+            user: true,
+        },
+    });
+    return updatedProvider;
+};
+
 export const verifyProviderOTP = async (email, otp) => {
     const provider = await prisma.providers.findUnique({
         where: { email },
@@ -106,7 +117,7 @@ export const verifyProviderOTP = async (email, otp) => {
     // Clear OTP after verification
     await prisma.providers.update({
         where: { id: provider.id },
-        data: { otp: '' },
+        data: { otp: '', updated_at: new Date() },
     });
 
     return { success: true, message: 'Email verified successfully' };
