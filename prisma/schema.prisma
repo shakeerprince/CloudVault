@@ -80,10 +80,11 @@ model providers {
 }
 
 model provider_documents {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  provider_id  String    @db.ObjectId
-  provider     providers @relation(fields: [provider_id], references: [id])
-  document_url String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime? @default(now())
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  provider_id   String    @db.ObjectId
+  provider      providers @relation(fields: [provider_id], references: [id])
+  document_url  String
+  document_type String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @default(now())
 }
