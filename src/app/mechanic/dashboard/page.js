@@ -17,12 +17,13 @@ import { FileUpload } from "primereact/fileupload";
 import { Message } from "primereact/message";
 import { ProgressBar } from "primereact/progressbar";
 import { verifyToken } from "@/lib/jwt";
-import { getSignedUrlPutFunction } from "@/lib/io";
+import { getSignedUrlPutFunction, uploadImageToS3, getSignedUrlGetFunction } from "@/lib/io";
 
 export default function MechanicDashboard() {
     const router = useRouter();
     const toast = useRef(null);
     const [signedUrl, setSignedUrl] = useState('');
+    const [fileName, setFileName] = useState('');
 
     const [provider, setProvider] = useState({
     });
@@ -117,23 +118,18 @@ export default function MechanicDashboard() {
     const handleFileUpload = async (event) => {
         setUploading(true);
         const files = event.files;
-
+        setFileName(files[0].name);
         try {
             const formData = new FormData();
             files.forEach(file => {
                 formData.append('documents', file);
             });
 
-            const response = await fetch('/api/v1/providers/upload-documents', {
-                method: 'POST',
-                body: formData,
-            });
+            const objectKey = await getSignedUrlPutFunction('mechanics/documents/' + files[0].name);
+            setSignedUrl(objectKey);
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to upload documents');
-            }
+            const result = await uploadImageToS3('mechanics/documents/' + files[0].name, files[0]);
+            console.log('Upload result:', result);
 
             toast.current?.show({
                 severity: 'success',
@@ -167,7 +163,7 @@ export default function MechanicDashboard() {
 
     const getURL = async () => {
         try {
-            const response = await getSignedUrlPutFunction('mechanics/documents/12345.pdf');
+            const response = await getSignedUrlGetFunction('mechanics/documents/' + fileName);
             setSignedUrl(response);
         } catch (error) {
             toast.current?.show({
@@ -222,12 +218,12 @@ export default function MechanicDashboard() {
                                 className="mb-4"
                             />
                         </div>
-                        <Button label="Get Signed URL" icon="pi pi-upload" onClick={getURL} className="mb-4" />
+                        <Button label="Show Image" icon="pi pi-upload" onClick={getURL} className="mb-4" />
+                        <img src={signedUrl} alt="Signed URL" className="mb-4 w-full" />
                         <label>{signedUrl}</label>
                         <FileUpload
                             ref={fileUploadRef}
                             name="documents"
-                            multiple
                             accept="image/*,application/pdf"
                             maxFileSize={5000000}
                             emptyTemplate={
@@ -237,6 +233,7 @@ export default function MechanicDashboard() {
                                     <p className="text-sm text-gray-500">PDF or Images (Max 5MB per file)</p>
                                 </div>
                             }
+                            url={signedUrl}
                             customUpload
                             uploadHandler={handleFileUpload}
                             disabled={uploading}
