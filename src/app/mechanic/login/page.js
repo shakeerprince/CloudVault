@@ -28,11 +28,35 @@ export default function MechanicLoginPage() {
             // TODO: Implement actual login API call
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Simulate login
-            console.log('Login attempt:', { email, password, rememberMe });
+            setTimeout(() => {
+                console.log('Login attempt with:', { email, password });
+                fetch('/api/v1/validatelogin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password }),
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        console.log('Login response:', data);
+                        if (data.statusCode === "200") {
+                            sessionStorage.setItem('authToken', data.data);
+                            router.push('/mechanic/dashboard');
+                        } else {
+                            toast.current.show({ severity: 'error', summary: 'Error', detail: data.message });
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error during login:', error);
+                        // Handle login error here (e.g., show error message)
+                    })
 
+
+                setIsLoading(false);
+            }, 1000);
             // Navigate to mechanic dashboard on success
-            router.push('/mechanic/dashboard');
+
         } catch (err) {
             setError(err.message || 'Invalid credentials. Please try again.');
         } finally {

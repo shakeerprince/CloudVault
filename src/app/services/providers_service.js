@@ -77,6 +77,10 @@ export const updateProviderOTPService = async (email, otp) => {
     return await providersDal.updateProviderOTP(email, otp);
 };
 
+export const getProviderByEmailService = async (email) => {
+    return await providersDal.getProviderByEmail(email);
+}
+
 export const resetPasswordService = async (email, otp, newPassword) => {
     const provider = await providersDal.getProviderByEmail(email);
 

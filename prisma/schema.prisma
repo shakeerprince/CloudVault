@@ -51,22 +51,39 @@ model cities {
   updatedAt DateTime?   @default(now())
 }
 
+enum provider_status {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model providers {
-  id               String    @id @default(auto()) @map("_id") @db.ObjectId
-  user_id          String    @unique @db.ObjectId
-  user             users     @relation(fields: [user_id], references: [id])
-  name             String
-  email            String    @unique
-  phone            String
-  address          String
-  state_id         String    @db.ObjectId
-  state            states    @relation(fields: [state_id], references: [id])
-  city_id          String    @db.ObjectId
-  city             cities    @relation(fields: [city_id], references: [id])
-  service_distance Float
-  latitude         Float
-  longitude        Float
-  otp              String
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime? @default(now())
+  id                String               @id @default(auto()) @map("_id") @db.ObjectId
+  user_id           String               @unique @db.ObjectId
+  user              users                @relation(fields: [user_id], references: [id])
+  name              String
+  email             String               @unique
+  phone             String
+  address           String
+  state_id          String               @db.ObjectId
+  state             states               @relation(fields: [state_id], references: [id])
+  city_id           String               @db.ObjectId
+  city              cities               @relation(fields: [city_id], references: [id])
+  service_distance  Float
+  latitude          Float
+  longitude         Float
+  otp               String               @default("")
+  status            provider_status      @default(PENDING)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime?            @default(now())
+  providerDocuments provider_documents[]
+}
+
+model provider_documents {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  provider_id  String    @db.ObjectId
+  provider     providers @relation(fields: [provider_id], references: [id])
+  document_url String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime? @default(now())
 }
