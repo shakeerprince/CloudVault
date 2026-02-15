@@ -1,31 +1,55 @@
-import { NextResponse } from 'next/server'
-import { verifyToken } from './lib/jwt';
+import { NextResponse } from 'next/server';
+import { jwtVerify } from 'jose';
 
-// This function can be marked `async` if using `await` inside
+const PUBLIC_PATHS = ['/login', '/signup', '/api/auth/login', '/api/auth/register'];
+
 export async function middleware(request) {
+    const { pathname } = request.nextUrl;
 
-    if (request.nextUrl.pathname.startsWith('/api/v1/validatelogin') || request.nextUrl.pathname.startsWith('/api/v1/providers/sign-up') || request.nextUrl.pathname.startsWith('/api/v1/providers/verify-otp') || request.nextUrl.pathname.startsWith('/api/v1/states') || request.nextUrl.pathname.startsWith('/api/v1/cities')) {
+    // Allow public paths
+    if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
         return NextResponse.next();
     }
 
-    //Check whether a custom header 'Authorization' is present
-    const token = request.headers.get('Authorization');
+    // Allow static files and Next.js internals
+    if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.includes('.')) {
+        return NextResponse.next();
+    }
+
+    const token = request.cookies.get('auth-token')?.value;
+
+    // If no token and trying to access protected route, redirect to login
     if (!token) {
-        return NextResponse.json({ message: 'Authorization token is missing' }, { status: 401 });
-    } else {
-        //validate token here (implementation depends on your auth strategy)
-        //if invalid, return unauthorized response
-        //if valid, proceed
-        const isValidToken = await verifyToken(token.replace('Bearer ', ''));
-        console.log('Token validation result in middleware:', isValidToken);
-        if (!isValidToken) {
-            return NextResponse.json({ message: 'Invalid Token' }, { status: 401 });
+        if (pathname.startsWith('/api/')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
 
-        return NextResponse.next();
+    try {
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'x9k2m8p4q7w3n6v1t5y0r8e2u4i6o3a');
+        const { payload } = await jwtVerify(token, secret);
+
+        // Add user info to headers for API routes
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set('x-user-id', payload.userId);
+        requestHeaders.set('x-user-role', payload.role);
+        requestHeaders.set('x-user-name', payload.name);
+
+        return NextResponse.next({
+            request: { headers: requestHeaders },
+        });
+    } catch (error) {
+        // Invalid token
+        if (pathname.startsWith('/api/')) {
+            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+        }
+        const response = NextResponse.redirect(new URL('/login', request.url));
+        response.cookies.delete('auth-token');
+        return response;
     }
 }
-// See "Matching Paths" below to learn more
+
 export const config = {
-    matcher: ['/api/v1/:path*']
-}
+    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};

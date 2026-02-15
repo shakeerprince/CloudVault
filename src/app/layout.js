@@ -1,14 +1,18 @@
-
 import './globals.css';
-import "primereact/resources/themes/fluent-light/theme.css";
-import "primereact/resources/primereact.min.css";
-import "primeicons/primeicons.css";
-import "primeflex/primeflex.css";
+import { AuthProvider } from '@/context/AuthContext';
+
+export const metadata = {
+  title: 'CloudVault — Secure File Storage',
+  description: 'Premium cloud file storage with S3-powered uploads',
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
