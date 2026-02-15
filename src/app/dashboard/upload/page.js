@@ -32,7 +32,6 @@ export default function UploadPage() {
     const [uploadQueue, setUploadQueue] = useState([]);
     const [toasts, setToasts] = useState([]);
     const zoneRef = useRef(null);
-    const queueRef = useRef(null);
 
     useEffect(() => {
         if (zoneRef.current) {
@@ -53,54 +52,46 @@ export default function UploadPage() {
 
     async function uploadFile(file, index) {
         try {
-            // Step 1: Get presigned URL
             setUploadQueue(prev => prev.map((item, i) =>
-                i === index ? { ...item, status: 'uploading', progress: 10 } : item
+                i === index ? { ...item, status: 'uploading', progress: 20 } : item
             ));
 
-            const metaRes = await fetch('/api/upload', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileName: file.name,
-                    fileType: file.type,
-                    fileSize: file.size,
-                }),
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Use XMLHttpRequest for progress tracking
+            const result = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 90);
+                        setUploadQueue(prev => prev.map((item, i) =>
+                            i === index ? { ...item, progress: Math.max(20, percent) } : item
+                        ));
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(JSON.parse(xhr.responseText));
+                    } else {
+                        try {
+                            const err = JSON.parse(xhr.responseText);
+                            reject(new Error(err.error || 'Upload failed'));
+                        } catch {
+                            reject(new Error('Upload failed'));
+                        }
+                    }
+                });
+
+                xhr.addEventListener('error', () => reject(new Error('Network error')));
+                xhr.open('POST', '/api/upload');
+                xhr.send(formData);
             });
 
-            if (!metaRes.ok) {
-                throw new Error('Failed to get upload URL');
-            }
-
-            const { presignedUrl, file: fileMeta } = await metaRes.json();
-
-            // Step 2: Upload directly to S3
             setUploadQueue(prev => prev.map((item, i) =>
-                i === index ? { ...item, progress: 30 } : item
-            ));
-
-            const uploadRes = await fetch(presignedUrl, {
-                method: 'PUT',
-                body: file,
-                headers: {
-                    'Content-Type': file.type,
-                },
-            });
-
-            // Simulate progress steps
-            for (let p = 40; p <= 90; p += 20) {
-                await new Promise(r => setTimeout(r, 200));
-                setUploadQueue(prev => prev.map((item, i) =>
-                    i === index ? { ...item, progress: p } : item
-                ));
-            }
-
-            if (!uploadRes.ok) {
-                throw new Error('Upload failed');
-            }
-
-            setUploadQueue(prev => prev.map((item, i) =>
-                i === index ? { ...item, status: 'done', progress: 100 } : item
+                i === index ? { ...item, status: 'done', progress: 100, fileUrl: result.file?.fileUrl } : item
             ));
 
             addToast(`✅ ${file.name} uploaded successfully`, 'success');
@@ -109,7 +100,7 @@ export default function UploadPage() {
             setUploadQueue(prev => prev.map((item, i) =>
                 i === index ? { ...item, status: 'error', progress: 0 } : item
             ));
-            addToast(`❌ Failed to upload ${file.name}`, 'error');
+            addToast(`❌ Failed to upload ${file.name}: ${error.message}`, 'error');
         }
     }
 
@@ -121,6 +112,8 @@ export default function UploadPage() {
             type: file.type,
             status: 'pending',
             progress: 0,
+            // Create local preview for images
+            preview: file.type?.startsWith('image') ? URL.createObjectURL(file) : null,
         }));
 
         const startIndex = uploadQueue.length;
@@ -162,7 +155,7 @@ export default function UploadPage() {
 
             {/* Upload Queue */}
             {uploadQueue.length > 0 && (
-                <div className="upload-queue" ref={queueRef}>
+                <div className="upload-queue">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <h3 style={{ fontSize: 16, fontWeight: 600 }}>
                             Uploads ({uploadQueue.filter(i => i.status === 'done').length}/{uploadQueue.length})
@@ -183,7 +176,15 @@ export default function UploadPage() {
                     {uploadQueue.map((item, index) => (
                         <div key={index} className="upload-item">
                             <div className={`upload-item-icon ${getFileTypeClass(item.type)}`}>
-                                {getFileIcon(item.type)}
+                                {item.preview ? (
+                                    <img
+                                        src={item.preview}
+                                        alt=""
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-md)' }}
+                                    />
+                                ) : (
+                                    getFileIcon(item.type)
+                                )}
                             </div>
                             <div className="upload-item-info">
                                 <div className="upload-item-name">{item.name}</div>

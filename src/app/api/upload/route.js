@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { generatePresignedUploadUrl, getPublicUrl } from '@/lib/s3';
-import { v4 as uuidv4 } from 'crypto';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+const s3Client = new S3Client({
+    region: process.env.AWS_S3_REGION,
+    endpoint: process.env.AWS_S3_ENDPOINT,
+    credentials: {
+        accessKeyId: process.env.AWS_S3_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_S3_SECRET_KEY,
+    },
+    forcePathStyle: false,
+});
 
 function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -14,23 +23,40 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { fileName, fileType, fileSize } = await request.json();
+        const formData = await request.formData();
+        const file = formData.get('file');
 
-        if (!fileName || !fileType) {
-            return NextResponse.json({ error: 'fileName and fileType are required' }, { status: 400 });
+        if (!file) {
+            return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
+
+        const fileName = file.name;
+        const fileType = file.type;
+        const fileSize = file.size;
 
         // Generate unique key
         const ext = fileName.split('.').pop();
         const uniqueId = generateUniqueId();
         const fileKey = `uploads/${userId}/${uniqueId}.${ext}`;
 
-        // Generate presigned URL
-        const presignedUrl = await generatePresignedUploadUrl(fileKey, fileType);
-        const publicUrl = getPublicUrl(fileKey);
+        // Read file buffer
+        const buffer = Buffer.from(await file.arrayBuffer());
+
+        // Upload to S3
+        const command = new PutObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME,
+            Key: fileKey,
+            Body: buffer,
+            ContentType: fileType,
+            ACL: 'public-read',
+        });
+
+        await s3Client.send(command);
+
+        const publicUrl = `${process.env.AWS_S3_BUCKET_URL}/${fileKey}`;
 
         // Save file metadata to database
-        const file = await prisma.uploaded_files.create({
+        const savedFile = await prisma.uploaded_files.create({
             data: {
                 userId,
                 fileName,
@@ -43,18 +69,17 @@ export async function POST(request) {
 
         return NextResponse.json({
             success: true,
-            presignedUrl,
             file: {
-                id: file.id,
-                fileName: file.fileName,
-                fileUrl: file.fileUrl,
-                fileType: file.fileType,
-                fileSize: file.fileSize,
-                createdAt: file.createdAt,
+                id: savedFile.id,
+                fileName: savedFile.fileName,
+                fileUrl: savedFile.fileUrl,
+                fileType: savedFile.fileType,
+                fileSize: savedFile.fileSize,
+                createdAt: savedFile.createdAt,
             },
         });
     } catch (error) {
         console.error('Upload error:', error);
-        return NextResponse.json({ error: 'Failed to generate upload URL' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to upload file: ' + error.message }, { status: 500 });
     }
 }
