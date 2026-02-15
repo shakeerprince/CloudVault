@@ -32,6 +32,7 @@ export default function DashboardLayout({ children }) {
         if (pathname === '/dashboard') return { title: 'Dashboard', subtitle: 'Welcome back! Here\'s your storage overview.' };
         if (pathname === '/dashboard/upload') return { title: 'Upload Files', subtitle: 'Drag & drop or browse to upload files.' };
         if (pathname === '/dashboard/files') return { title: 'My Files', subtitle: 'Browse and manage your uploaded files.' };
+        if (pathname === '/dashboard/admin') return { title: 'Admin Panel', subtitle: 'Manage users, files, and system overview.' };
         return { title: 'Dashboard', subtitle: '' };
     }
 
@@ -73,6 +74,19 @@ export default function DashboardLayout({ children }) {
                             {link.label}
                         </Link>
                     ))}
+                    {user?.role === 'ADMIN' && (
+                        <>
+                            <div className="nav-separator" />
+                            <Link
+                                href="/dashboard/admin"
+                                className={`nav-item ${pathname === '/dashboard/admin' ? 'active' : ''}`}
+                                onClick={() => setSidebarOpen(false)}
+                            >
+                                <span className="nav-icon">🛡️</span>
+                                Admin Panel
+                            </Link>
+                        </>
+                    )}
                 </nav>
 
                 <div className="sidebar-footer">
